@@ -1,0 +1,12 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:rider_app/main.dart';
+
+void main() {
+  testWidgets('App smoke test', (WidgetTester tester) async {
+    // Build our app and trigger a frame.
+    await tester.pumpWidget(const AuxiliaApp());
+
+    // Verify that the app starts without crashing
+    expect(find.text('Auxilia'), findsWidgets);
+  });
+}
