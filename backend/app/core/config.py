@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     OPENWEATHER_API_KEY: str = ""
     TOMTOM_API_KEY: str = ""
     NEWS_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
     
     # Blockchain
     BLOCKCHAIN_RPC_URL: str = "https://rpc-mumbai.maticvigil.com"
