@@ -4,7 +4,7 @@ Endpoints for admin dashboard statistics and analytics
 """
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, case
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -87,10 +87,10 @@ async def get_claims_chart_data(
             func.date(Claim.created_at).label("date"),
             func.count(Claim.id).label("total"),
             func.sum(
-                func.case((Claim.status == ClaimStatus.APPROVED.value, 1), else_=0)
+                case((Claim.status == ClaimStatus.APPROVED.value, 1), else_=0)
             ).label("approved"),
             func.sum(
-                func.case((Claim.status == ClaimStatus.REJECTED.value, 1), else_=0)
+                case((Claim.status == ClaimStatus.REJECTED.value, 1), else_=0)
             ).label("rejected")
         ).where(Claim.created_at >= cutoff)
         .group_by(func.date(Claim.created_at))
@@ -99,8 +99,9 @@ async def get_claims_chart_data(
     
     data = []
     for row in result.all():
+        date_value = row.date.isoformat() if hasattr(row.date, "isoformat") else str(row.date) if row.date else None
         data.append({
-            "date": row.date.isoformat() if row.date else None,
+            "date": date_value,
             "total": row.total or 0,
             "approved": row.approved or 0,
             "rejected": row.rejected or 0
