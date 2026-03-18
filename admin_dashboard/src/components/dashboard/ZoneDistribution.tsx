@@ -2,18 +2,24 @@
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 
-const zoneData = [
-  { name: 'Andheri', value: 245, risk: 'high' },
-  { name: 'Bandra', value: 189, risk: 'medium' },
-  { name: 'Dadar', value: 167, risk: 'high' },
-  { name: 'Kurla', value: 143, risk: 'medium' },
-  { name: 'Powai', value: 98, risk: 'low' },
-  { name: 'Others', value: 156, risk: 'mixed' },
-];
+type ZoneDatum = {
+  name: string;
+  value: number;
+  risk?: string;
+};
 
 const COLORS = ['#FF6B35', '#4ECDC4', '#45B7D1', '#96CEB4', '#9B59B6', '#718096'];
 
-export function ZoneDistribution() {
+export function ZoneDistribution({ data }: { data: ZoneDatum[] }) {
+  const totals = data.reduce(
+    (acc, item) => {
+      const risk = item.risk ?? 'medium';
+      acc[risk] = (acc[risk] ?? 0) + item.value;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
+
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-6">
@@ -24,18 +30,9 @@ export function ZoneDistribution() {
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
-            <Pie
-              data={zoneData}
-              cx="50%"
-              cy="50%"
-              innerRadius={60}
-              outerRadius={90}
-              fill="#8884d8"
-              paddingAngle={3}
-              dataKey="value"
-            >
-              {zoneData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            <Pie data={data} cx="50%" cy="50%" innerRadius={60} outerRadius={90} fill="#8884d8" paddingAngle={3} dataKey="value">
+              {data.map((entry, index) => (
+                <Cell key={`cell-${entry.name}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
             <Tooltip
@@ -47,32 +44,22 @@ export function ZoneDistribution() {
               }}
               formatter={(value) => [`${value} policies`, 'Count']}
             />
-            <Legend
-              layout="horizontal"
-              verticalAlign="bottom"
-              align="center"
-              iconType="circle"
-              iconSize={8}
-              formatter={(value) => (
-                <span className="text-sm text-slate-600">{value}</span>
-              )}
-            />
+            <Legend layout="horizontal" verticalAlign="bottom" align="center" iconType="circle" iconSize={8} formatter={(value) => <span className="text-sm text-slate-600">{value}</span>} />
           </PieChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Zone Stats */}
       <div className="mt-4 grid grid-cols-3 gap-2">
         <div className="rounded-lg bg-red-50 p-3 text-center">
-          <p className="text-lg font-bold text-red-600">412</p>
+          <p className="text-lg font-bold text-red-600">{totals.high ?? 0}</p>
           <p className="text-xs text-red-600">High Risk</p>
         </div>
         <div className="rounded-lg bg-yellow-50 p-3 text-center">
-          <p className="text-lg font-bold text-yellow-600">332</p>
+          <p className="text-lg font-bold text-yellow-600">{totals.medium ?? 0}</p>
           <p className="text-xs text-yellow-600">Medium Risk</p>
         </div>
         <div className="rounded-lg bg-green-50 p-3 text-center">
-          <p className="text-lg font-bold text-green-600">254</p>
+          <p className="text-lg font-bold text-green-600">{totals.low ?? 0}</p>
           <p className="text-xs text-green-600">Low Risk</p>
         </div>
       </div>

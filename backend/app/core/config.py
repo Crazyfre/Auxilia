@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
-from typing import Optional
+from typing import Optional, List
 
 
 class Settings(BaseSettings):
@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/auxilia"
+    DATABASE_URL: str = "sqlite+aiosqlite:///./auxilia.db"
     
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "your-super-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    CORS_ORIGINS: List[str] = ["*"]
     
     # External APIs
     OPENWEATHER_API_KEY: str = ""
@@ -36,16 +37,33 @@ class Settings(BaseSettings):
     TRAFFIC_THRESHOLD_PERCENT: float = 60.0
     SURGE_THRESHOLD_MULTIPLIER: float = 2.5
     ACCIDENT_THRESHOLD_COUNT: int = 3
+    TRIGGER_POLL_INTERVAL: int = 300
+
+    # Backward-compatible aliases used across routers/agents
+    CONGESTION_THRESHOLD: float = 60.0
+    SURGE_THRESHOLD: float = 2.5
+    INCIDENT_THRESHOLD: int = 3
     
     # Payout Amounts (INR)
     RAIN_PAYOUT: int = 150
     TRAFFIC_PAYOUT: int = 100
     SURGE_PAYOUT: int = 200
     ACCIDENT_PAYOUT: int = 500
+
+    # Optional payout integrations
+    RAZORPAY_KEY_ID: str = ""
+    RAZORPAY_KEY_SECRET: str = ""
+    RAZORPAY_ACCOUNT_NUMBER: str = ""
+    FIREBASE_SERVER_KEY: str = ""
     
     # Zone Configuration - Mumbai
     DEFAULT_CITY: str = "Mumbai"
     DEFAULT_COUNTRY: str = "IN"
+
+    def model_post_init(self, __context) -> None:
+        self.CONGESTION_THRESHOLD = self.TRAFFIC_THRESHOLD_PERCENT
+        self.SURGE_THRESHOLD = self.SURGE_THRESHOLD_MULTIPLIER
+        self.INCIDENT_THRESHOLD = self.ACCIDENT_THRESHOLD_COUNT
     
     class Config:
         env_file = ".env"
