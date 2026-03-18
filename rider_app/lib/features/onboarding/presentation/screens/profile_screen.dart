@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/theme.dart';
 import '../../../../core/constants/constants.dart';
+import '../../../../core/providers/providers.dart';
 import '../../../../core/router/app_router.dart';
 
 /// Profile input screen
-class ProfileScreen extends StatefulWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   bool _isListening = false;
@@ -187,7 +189,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: _isValid ? () => context.go(AppRoutes.zone) : null,
+                  onPressed: _isValid
+                      ? () {
+                          ref
+                              .read(onboardingProvider.notifier)
+                              .setProfile(
+                                name: _nameController.text.trim(),
+                                phone: _phoneController.text.trim(),
+                              );
+                          context.go(AppRoutes.zone);
+                        }
+                      : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     disabledBackgroundColor: AppColors.border,

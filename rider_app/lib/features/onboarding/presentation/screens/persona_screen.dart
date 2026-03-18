@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/theme.dart';
 import '../../../../core/constants/constants.dart';
+import '../../../../core/providers/providers.dart';
 import '../../../../core/router/app_router.dart';
 
 /// Persona selection screen
-class PersonaScreen extends StatefulWidget {
+class PersonaScreen extends ConsumerStatefulWidget {
   const PersonaScreen({super.key});
 
   @override
-  State<PersonaScreen> createState() => _PersonaScreenState();
+  ConsumerState<PersonaScreen> createState() => _PersonaScreenState();
 }
 
-class _PersonaScreenState extends State<PersonaScreen> {
+class _PersonaScreenState extends ConsumerState<PersonaScreen> {
   String? selectedPersona;
 
   @override
@@ -85,7 +87,16 @@ class _PersonaScreenState extends State<PersonaScreen> {
                 height: 56,
                 child: ElevatedButton(
                   onPressed: selectedPersona != null
-                      ? () => context.go(AppRoutes.profile)
+                      ? () {
+                          ref
+                              .read(onboardingProvider.notifier)
+                              .setPersona(
+                                selectedPersona == 'qcom'
+                                    ? 'qcommerce'
+                                    : 'food_delivery',
+                              );
+                          context.go(AppRoutes.profile);
+                        }
                       : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -117,7 +128,6 @@ class _PersonaScreenState extends State<PersonaScreen> {
     return Row(
       children: List.generate(total, (index) {
         final isActive = index < current;
-        final isCurrent = index == current - 1;
         return Expanded(
           child: Container(
             margin: EdgeInsets.only(right: index < total - 1 ? 8 : 0),

@@ -1,32 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/theme.dart';
 import '../../../../core/constants/constants.dart';
+import '../../../../core/providers/providers.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../shared/models/models.dart';
 
 /// Zone selection screen with GPS
-class ZoneScreen extends StatefulWidget {
+class ZoneScreen extends ConsumerStatefulWidget {
   const ZoneScreen({super.key});
 
   @override
-  State<ZoneScreen> createState() => _ZoneScreenState();
+  ConsumerState<ZoneScreen> createState() => _ZoneScreenState();
 }
 
-class _ZoneScreenState extends State<ZoneScreen> {
-  String selectedZone = 'Andheri-East (Zone 3)';
+class _ZoneScreenState extends ConsumerState<ZoneScreen> {
+  String? selectedZoneId;
   bool _gpsReady = false;
   bool _isGettingLocation = false;
-
-  final List<Map<String, dynamic>> zones = [
-    {'name': 'Andheri-East (Zone 3)', 'multiplier': 1.3, 'risk': 'High'},
-    {'name': 'Koramangala (Zone 2)', 'multiplier': 1.1, 'risk': 'Medium'},
-    {'name': 'Whitefield (Zone 7)', 'multiplier': 0.8, 'risk': 'Low'},
-    {'name': 'Malad-West (Zone 5)', 'multiplier': 0.95, 'risk': 'Medium'},
-    {'name': 'Indiranagar (Zone 1)', 'multiplier': 1.0, 'risk': 'Medium'},
-    {'name': 'Thane-West (Zone 6)', 'multiplier': 1.2, 'risk': 'High'},
-  ];
 
   void _getLocation() {
     setState(() => _isGettingLocation = true);
@@ -42,6 +36,8 @@ class _ZoneScreenState extends State<ZoneScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final zonesAsync = ref.watch(zonesProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -79,42 +75,57 @@ class _ZoneScreenState extends State<ZoneScreen> {
               const SizedBox(height: 24),
 
               // Zone dropdown
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: selectedZone,
-                    isExpanded: true,
-                    icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                    items: zones.map((zone) {
-                      return DropdownMenuItem(
-                        value: zone['name'] as String,
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.location_on_rounded,
-                              color: _getRiskColor(zone['risk'] as String),
-                              size: 20,
-                            ),
-                            const SizedBox(width: 12),
-                            Text(zone['name'] as String),
-                          ],
+              zonesAsync
+                  .when(
+                    data: (zones) {
+                      if (zones.isEmpty) {
+                        return _buildZoneUnavailable();
+                      }
+
+                      selectedZoneId ??= zones.first.id;
+
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: selectedZoneId,
+                            isExpanded: true,
+                            icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                            items: zones.map((zone) {
+                              return DropdownMenuItem(
+                                value: zone.id,
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.location_on_rounded,
+                                      color: _getRiskColor(zone.riskLevel),
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(child: Text(zone.name)),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              if (value != null) {
+                                setState(() => selectedZoneId = value);
+                              }
+                            },
+                          ),
                         ),
                       );
-                    }).toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => selectedZone = value);
-                      }
                     },
-                  ),
-                ),
-              ).animate(delay: 200.ms).fadeIn(),
+                    loading: () => const LinearProgressIndicator(),
+                    error: (_, _) => _buildZoneUnavailable(),
+                  )
+                  .animate(delay: 200.ms)
+                  .fadeIn(),
 
               const SizedBox(height: 24),
 
@@ -214,7 +225,15 @@ class _ZoneScreenState extends State<ZoneScreen> {
                 height: 56,
                 child: ElevatedButton(
                   onPressed: _gpsReady
-                      ? () => context.go(AppRoutes.review)
+                      ? () {
+                          final zones = zonesAsync.value ?? <Zone>[];
+                          final zone = zones.firstWhere(
+                            (item) => item.id == selectedZoneId,
+                            orElse: () => zones.first,
+                          );
+                          ref.read(onboardingProvider.notifier).setZone(zone);
+                          context.go(AppRoutes.review);
+                        }
                       : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -244,13 +263,30 @@ class _ZoneScreenState extends State<ZoneScreen> {
 
   Color _getRiskColor(String risk) {
     switch (risk) {
-      case 'High':
+      case 'high':
         return AppColors.danger;
-      case 'Medium':
+      case 'medium':
         return AppColors.warning;
       default:
         return AppColors.success;
     }
+  }
+
+  Widget _buildZoneUnavailable() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Text(
+        'Unable to load zones from backend.',
+        style: AppTypography.bodyMedium.copyWith(
+          color: AppColors.textSecondary,
+        ),
+      ),
+    );
   }
 
   Widget _buildProgress(int current, int total) {

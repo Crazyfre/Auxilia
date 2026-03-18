@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/providers/providers.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../core/router/app_router.dart';
 
 /// Success screen after policy activation
-class SuccessScreen extends StatelessWidget {
+class SuccessScreen extends ConsumerWidget {
   const SuccessScreen({super.key});
 
   String _generateTxHash() {
@@ -15,8 +17,9 @@ class SuccessScreen extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final txHash = _generateTxHash();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final riderAsync = ref.watch(currentRiderProvider);
+    final policyAsync = ref.watch(activePolicyProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -64,14 +67,25 @@ class SuccessScreen extends StatelessWidget {
 
               const SizedBox(height: 12),
 
-              Text(
-                'Policy active for Ramesh Kumar.\nTriggerAgent is now monitoring your zone 24/7.\nDisruption detected → ₹300 hits your UPI.',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
-                  height: 1.6,
-                ),
-                textAlign: TextAlign.center,
-              ).animate(delay: 300.ms).fadeIn(),
+              policyAsync
+                  .when(
+                    data: (policy) => riderAsync.when(
+                      data: (rider) => Text(
+                        'Policy active for ${rider?.name ?? 'your account'}.\nLive triggers are now monitoring ${policy?.zoneId ?? 'your zone'} 24/7.\nVerified payouts will move automatically when a disruption hits.',
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: AppColors.textSecondary,
+                          height: 1.6,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, _) => const SizedBox.shrink(),
+                    ),
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, _) => const SizedBox.shrink(),
+                  )
+                  .animate(delay: 300.ms)
+                  .fadeIn(),
 
               const SizedBox(height: 32),
 
@@ -83,30 +97,46 @@ class SuccessScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: AppColors.border),
                 ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildDetailItem('Zone', 'Andheri-East'),
-                        ),
-                        Expanded(
-                          child: _buildDetailItem('Premium', '₹149/week'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildDetailItem('Coverage', '₹300/event'),
-                        ),
-                        Expanded(
-                          child: _buildDetailItem('Renews', 'Every Sunday'),
-                        ),
-                      ],
-                    ),
-                  ],
+                child: policyAsync.when(
+                  data: (policy) => Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildDetailItem(
+                              'Zone',
+                              policy?.zoneId ?? '-',
+                            ),
+                          ),
+                          Expanded(
+                            child: _buildDetailItem(
+                              'Premium',
+                              'Rs ${(policy?.premium ?? 0).toStringAsFixed(0)} / month',
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildDetailItem(
+                              'Coverage',
+                              'Rs ${(policy?.coverage ?? 0).toStringAsFixed(0)}',
+                            ),
+                          ),
+                          Expanded(
+                            child: _buildDetailItem(
+                              'Status',
+                              (policy?.status ?? 'active').toUpperCase(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, _) => const SizedBox.shrink(),
                 ),
               ).animate(delay: 400.ms).fadeIn().slideY(begin: 0.1),
 
@@ -132,7 +162,7 @@ class SuccessScreen extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      txHash,
+                      policyAsync.valueOrNull?.txHash ?? _generateTxHash(),
                       style: AppTypography.monoSmall.copyWith(
                         color: AppColors.success,
                       ),

@@ -1,38 +1,77 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/providers/providers.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../core/router/app_router.dart';
 
 /// Policy review and payment screen
-class ReviewScreen extends StatefulWidget {
+class ReviewScreen extends ConsumerStatefulWidget {
   const ReviewScreen({super.key});
 
   @override
-  State<ReviewScreen> createState() => _ReviewScreenState();
+  ConsumerState<ReviewScreen> createState() => _ReviewScreenState();
 }
 
-class _ReviewScreenState extends State<ReviewScreen> {
+class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   bool _isProcessing = false;
-
-  // Mock premium calculation
-  final int basePremium = 99;
-  final double multiplier = 1.3;
-  final int addOn = 20;
-
-  int get total => (basePremium * multiplier + addOn).round();
 
   void _processPayment() async {
     setState(() => _isProcessing = true);
-    await Future.delayed(const Duration(seconds: 2));
-    if (mounted) {
-      context.go(AppRoutes.success);
+    final onboarding = ref.read(onboardingProvider);
+    final api = ref.read(apiServiceProvider);
+
+    final riderResponse = await ref
+        .read(onboardingProvider.notifier)
+        .register();
+    if (!mounted) return;
+
+    if (!riderResponse.success || riderResponse.data == null) {
+      setState(() => _isProcessing = false);
+      _showError(riderResponse.error ?? 'Failed to create rider profile');
+      return;
     }
+
+    final policyResponse = await api.createPolicy(
+      riderId: riderResponse.data!.id,
+      zoneId: onboarding.zoneId!,
+      persona: onboarding.persona!,
+    );
+
+    if (!mounted) return;
+
+    if (!policyResponse.success) {
+      setState(() => _isProcessing = false);
+      _showError(policyResponse.error ?? 'Failed to create policy');
+      return;
+    }
+
+    ref.invalidate(currentRiderProvider);
+    ref.invalidate(activePolicyProvider);
+    ref.invalidate(claimsProvider);
+    ref.invalidate(claimsSummaryProvider);
+    ref.invalidate(triggersProvider);
+
+    context.go(AppRoutes.success);
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
+    final onboarding = ref.watch(onboardingProvider);
+    final zone = onboarding.selectedZone;
+    final basePremium = onboarding.persona == 'qcommerce' ? 149 : 99;
+    final multiplier = zone?.basePremiumFactor ?? 1.0;
+    final addOn = 20;
+    final total = (basePremium * multiplier + addOn).round();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -88,16 +127,16 @@ class _ReviewScreenState extends State<ReviewScreen> {
                     ),
                     child: Column(
                       children: [
-                        _buildPremiumRow('Base premium', '₹$basePremium'),
+                        _buildPremiumRow('Base premium', 'Rs $basePremium'),
                         const Divider(height: 24),
                         _buildPremiumRow(
-                          'Zone risk multiplier (Andheri)',
+                          'Zone risk multiplier (${zone?.name ?? 'Selected zone'})',
                           '×${multiplier.toStringAsFixed(1)}',
                         ),
                         const Divider(height: 24),
                         _buildPremiumRow(
                           'Predictive add-on (7-day forecast)',
-                          '+ ₹$addOn',
+                          '+ Rs $addOn',
                         ),
                         const Divider(height: 24),
                         Row(
@@ -111,7 +150,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                               ),
                             ),
                             Text(
-                              '₹$total',
+                              'Rs $total',
                               style: AppTypography.displaySmall.copyWith(
                                 color: AppColors.warning,
                                 fontWeight: FontWeight.w800,
@@ -145,7 +184,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                     const SizedBox(height: 12),
                     _buildBenefitRow(
                       Icons.shield,
-                      'Claim up to ₹300 per disruption event',
+                      'Coverage activates instantly for live parametric events',
                     ),
                     const SizedBox(height: 12),
                     _buildBenefitRow(
@@ -193,7 +232,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                           ],
                         )
                       : Text(
-                          'Pay ₹$total via Razorpay',
+                          'Activate for Rs $total',
                           style: AppTypography.buttonLarge.copyWith(
                             color: AppColors.white,
                           ),

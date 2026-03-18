@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/providers/providers.dart';
 import '../../../../core/theme/theme.dart';
 import '../../../../core/router/app_router.dart';
 
 /// Splash Screen with animated logo
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
@@ -22,10 +24,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _navigateToNext() async {
     await Future.delayed(const Duration(milliseconds: 2500));
-    if (mounted) {
-      // TODO: Check if user is already onboarded
-      context.go(AppRoutes.onboarding);
-    }
+    final riderId = await ref.read(currentRiderIdProvider.future);
+    if (!mounted) return;
+    context.go(riderId == null ? AppRoutes.onboarding : AppRoutes.home);
   }
 
   @override
