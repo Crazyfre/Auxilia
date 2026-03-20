@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 TOMTOM_BASE_URL = "https://api.tomtom.com/traffic/services/4"
 TOMTOM_ROUTING_URL = "https://api.tomtom.com/routing/1"
+TOMTOM_INCIDENTS_URL = "https://api.tomtom.com/traffic/services/5/incidentDetails"
 
 
 class TrafficService:
@@ -85,8 +86,8 @@ class TrafficService:
         Categories: Accident, Fog, DangerousConditions, Rain, Ice, Jam, LaneClosed, RoadClosed, etc.
         """
         try:
-            # TomTom Traffic Incidents API
-            url = f"{TOMTOM_BASE_URL}/incidentDetails"
+            # TomTom Traffic Incidents API (v5 endpoint)
+            url = TOMTOM_INCIDENTS_URL
             
             min_lon, min_lat, max_lon, max_lat = bbox
             
@@ -124,6 +125,14 @@ class TrafficService:
                 })
             
             return incidents
+        except httpx.HTTPStatusError as e:
+            # Don't break trigger pipeline when incidents endpoint is unavailable.
+            status = e.response.status_code if e.response else None
+            logger.warning(
+                "Traffic incidents endpoint returned %s, falling back to empty incidents",
+                status,
+            )
+            return []
         except Exception as e:
             logger.error(f"Traffic incidents error: {e}")
             return []

@@ -225,18 +225,28 @@ class ApiService {
     });
   }
 
-  Future<ApiResponse<WeatherData>> getZoneWeather(String zoneId) async {
+  Future<ApiResponse<WeatherData>> getZoneWeather(
+    String zoneId, {
+    double? lat,
+    double? lon,
+  }) async {
+    final query = (lat != null && lon != null) ? '?lat=$lat&lon=$lon' : '';
     return get(
-      '/weather/current/$zoneId',
-      (json) => WeatherData.fromJson((json as Map<String, dynamic>)['weather']),
+      '/triggers/weather/$zoneId$query',
+      (json) => WeatherData.fromJson(
+        (json as Map<String, dynamic>)['current'] as Map<String, dynamic>,
+      ),
     );
   }
 
   Future<ApiResponse<List<TriggerStatusModel>>> getZoneTriggers(
-    String zoneId,
-  ) async {
+    String zoneId, {
+    double? lat,
+    double? lon,
+  }) async {
+    final query = (lat != null && lon != null) ? '?lat=$lat&lon=$lon' : '';
     return get(
-      '/triggers/status/$zoneId',
+      '/triggers/status/$zoneId$query',
       (json) => (((json as Map<String, dynamic>)['triggers'] ?? []) as List)
           .map(
             (trigger) =>
@@ -267,25 +277,38 @@ class ApiService {
     );
   }
 
-  Future<ApiResponse<Map<String, dynamic>>> getZoneNews(String zoneId) async {
+  Future<ApiResponse<Map<String, dynamic>>> getZoneNews(
+    String zoneId, {
+    double? lat,
+    double? lon,
+  }) async {
+    final query = (lat != null && lon != null) ? '?lat=$lat&lon=$lon' : '';
     return get(
-      '/triggers/news/$zoneId',
+      '/triggers/news/$zoneId$query',
       (json) => json as Map<String, dynamic>,
     );
   }
 
   Future<ApiResponse<Map<String, dynamic>>> getZoneTraffic(
-    String zoneId,
-  ) async {
+    String zoneId, {
+    double? lat,
+    double? lon,
+  }) async {
+    final query = (lat != null && lon != null) ? '?lat=$lat&lon=$lon' : '';
     return get(
-      '/triggers/traffic/$zoneId',
+      '/triggers/traffic/$zoneId$query',
       (json) => json as Map<String, dynamic>,
     );
   }
 
-  Future<ApiResponse<Map<String, dynamic>>> getZoneSurge(String zoneId) async {
+  Future<ApiResponse<Map<String, dynamic>>> getZoneSurge(
+    String zoneId, {
+    double? lat,
+    double? lon,
+  }) async {
+    final query = (lat != null && lon != null) ? '?lat=$lat&lon=$lon' : '';
     return get(
-      '/triggers/surge/$zoneId',
+      '/triggers/surge/$zoneId$query',
       (json) => json as Map<String, dynamic>,
     );
   }

@@ -93,9 +93,14 @@ final claimsSummaryProvider = FutureProvider<Map<String, dynamic>>((ref) async {
 final weatherProvider = FutureProvider<WeatherData?>((ref) async {
   final policy = await ref.watch(activePolicyProvider.future);
   if (policy == null) return null;
+  final rider = await ref.watch(currentRiderProvider.future);
 
   final api = ref.watch(apiServiceProvider);
-  final response = await api.getZoneWeather(policy.zoneId);
+  final response = await api.getZoneWeather(
+    policy.zoneId,
+    lat: rider?.latitude,
+    lon: rider?.longitude,
+  );
 
   if (response.success && response.data != null) {
     return response.data;
@@ -107,9 +112,14 @@ final weatherProvider = FutureProvider<WeatherData?>((ref) async {
 final triggersProvider = FutureProvider<List<TriggerStatusModel>>((ref) async {
   final policy = await ref.watch(activePolicyProvider.future);
   if (policy == null) return [];
+  final rider = await ref.watch(currentRiderProvider.future);
 
   final api = ref.watch(apiServiceProvider);
-  final response = await api.getZoneTriggers(policy.zoneId);
+  final response = await api.getZoneTriggers(
+    policy.zoneId,
+    lat: rider?.latitude,
+    lon: rider?.longitude,
+  );
 
   if (response.success && response.data != null) {
     return response.data!;
@@ -297,9 +307,14 @@ final zoneHeatmapProvider = FutureProvider<Map<String, dynamic>>((ref) async {
 final zoneNewsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final policy = await ref.watch(activePolicyProvider.future);
   if (policy == null) return {'incidents': [], 'incident_count': 0};
+  final rider = await ref.watch(currentRiderProvider.future);
 
   final api = ref.watch(apiServiceProvider);
-  final response = await api.getZoneNews(policy.zoneId);
+  final response = await api.getZoneNews(
+    policy.zoneId,
+    lat: rider?.latitude,
+    lon: rider?.longitude,
+  );
   if (response.success && response.data != null) return response.data!;
   return {'incidents': [], 'incident_count': 0};
 });
@@ -308,9 +323,14 @@ final zoneNewsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
 final zoneTrafficProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final policy = await ref.watch(activePolicyProvider.future);
   if (policy == null) return {};
+  final rider = await ref.watch(currentRiderProvider.future);
 
   final api = ref.watch(apiServiceProvider);
-  final response = await api.getZoneTraffic(policy.zoneId);
+  final response = await api.getZoneTraffic(
+    policy.zoneId,
+    lat: rider?.latitude,
+    lon: rider?.longitude,
+  );
   if (response.success && response.data != null) return response.data!;
   return {};
 });
@@ -319,9 +339,14 @@ final zoneTrafficProvider = FutureProvider<Map<String, dynamic>>((ref) async {
 final zoneSurgeProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final policy = await ref.watch(activePolicyProvider.future);
   if (policy == null) return {};
+  final rider = await ref.watch(currentRiderProvider.future);
 
   final api = ref.watch(apiServiceProvider);
-  final response = await api.getZoneSurge(policy.zoneId);
+  final response = await api.getZoneSurge(
+    policy.zoneId,
+    lat: rider?.latitude,
+    lon: rider?.longitude,
+  );
   if (response.success && response.data != null) return response.data!;
   return {};
 });

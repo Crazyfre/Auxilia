@@ -26,6 +26,8 @@ class NewsService:
     def __init__(self):
         self.api_key = settings.NEWS_API_KEY
         self.client = httpx.AsyncClient(timeout=30.0)
+        self._articles_cache: Dict[str, Dict[str, Any]] = {}
+        self._cooldown_until: Dict[str, datetime] = {}
         
         # Initialize Gemini
         genai.configure(api_key=settings.GEMINI_API_KEY)
@@ -103,6 +105,22 @@ class NewsService:
         Fetch raw news articles from NewsAPI.
         """
         try:
+            cache_key = city.strip().lower()
+            now = datetime.utcnow()
+
+            # If this city is rate-limited, serve cached data if available.
+            cooldown_until = self._cooldown_until.get(cache_key)
+            if cooldown_until and now < cooldown_until:
+                cached = self._articles_cache.get(cache_key)
+                if cached:
+                    logger.info(
+                        "NewsAPI cooldown active for %s, using cached articles",
+                        city,
+                    )
+                    return cached.get("articles", [])
+                logger.info("NewsAPI cooldown active for %s, returning empty", city)
+                return []
+
             url = f"{NEWS_API_BASE_URL}/everything"
             
             # Broad search query - let Gemini do the filtering
@@ -122,9 +140,34 @@ class NewsService:
             response = await self.client.get(url, params=params)
             response.raise_for_status()
             data = response.json()
-            
-            return data.get("articles", [])
+
+            articles = data.get("articles", [])
+            self._articles_cache[cache_key] = {
+                "articles": articles,
+                "cached_at": now,
+            }
+            # Successful response clears cooldown.
+            if cache_key in self._cooldown_until:
+                del self._cooldown_until[cache_key]
+
+            return articles
         except httpx.HTTPError as e:
+            status_code = e.response.status_code if e.response else None
+            cache_key = city.strip().lower()
+
+            if status_code == 429:
+                # Cool down for 15 minutes and avoid spamming NewsAPI.
+                self._cooldown_until[cache_key] = datetime.utcnow() + timedelta(minutes=15)
+                cached = self._articles_cache.get(cache_key)
+                if cached:
+                    logger.warning(
+                        "NewsAPI 429 for %s, using cached articles during cooldown",
+                        city,
+                    )
+                    return cached.get("articles", [])
+                logger.warning("NewsAPI 429 for %s, no cache available", city)
+                return []
+
             logger.error(f"NewsAPI error: {e}")
             return []
     
