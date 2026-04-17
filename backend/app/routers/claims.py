@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 from app.core.database import get_db
@@ -22,6 +22,12 @@ from app.agents.payout_agent import payout_agent
 from app.core.security import get_optional_admin, require_admin
 
 router = APIRouter(prefix="/claims", tags=["Claims"])
+
+
+def _as_utc(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 # Trigger thresholds
 TRIGGER_THRESHOLDS = {
@@ -105,7 +111,7 @@ async def create_claim(
     if policy.status != PolicyStatus.ACTIVE.value:
         raise HTTPException(status_code=400, detail="Policy is not active")
     
-    if policy.end_date < datetime.utcnow():
+    if _as_utc(policy.end_date) < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Policy has expired")
     
     # Get rider

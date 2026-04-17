@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
 
 from app.core.database import get_db
@@ -21,6 +21,12 @@ from app.core.security import get_optional_admin, require_admin
 import hashlib
 
 router = APIRouter(prefix="/policies", tags=["Policies"])
+
+
+def _as_utc(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 def generate_policy_hash(policy_id: str, rider_id: str, zone_id: str, premium: float) -> str:
@@ -398,8 +404,8 @@ async def get_policy_details(
         "policy": policy,
         "rider": rider,
         "zone": zone,
-        "days_remaining": max(0, (policy.end_date - datetime.utcnow()).days),
-        "is_active": policy.status == PolicyStatus.ACTIVE.value and policy.end_date > datetime.utcnow()
+        "days_remaining": max(0, (_as_utc(policy.end_date) - datetime.now(timezone.utc)).days),
+        "is_active": policy.status == PolicyStatus.ACTIVE.value and _as_utc(policy.end_date) > datetime.now(timezone.utc)
     }
 
 
