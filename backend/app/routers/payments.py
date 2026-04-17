@@ -4,7 +4,7 @@ Razorpay order creation and payment confirmation for policy purchases.
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import hashlib
 import hmac
 import uuid
@@ -111,7 +111,7 @@ async def _resolve_policy_context(payload: PolicyPaymentOrderRequest | PolicyPay
         select(Policy).where(
             Policy.rider_id == payload.rider_id,
             Policy.status == PolicyStatus.ACTIVE.value,
-            Policy.end_date > datetime.utcnow(),
+            Policy.end_date > datetime.now(timezone.utc),
         )
     )
     if existing_active.scalar_one_or_none():
